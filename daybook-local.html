@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daybook — Calendar, Habits & To-dos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f2ec; --panel:#ffffff; --ink:#1d232b; --muted:#6a717c; --line:#e6e1d8;
+  --accent:#0f766e; --accent-soft:#d9f0ec; --today:#fff6e6; --danger:#b91c1c;
+  --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:"DM Sans",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.4}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{margin:0}
+.hidden{display:none!important}
+
+/* header */
+header{display:flex;align-items:center;gap:12px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:20}
+.brand{font-family:Fraunces,serif;font-size:22px;letter-spacing:-.01em}
+.brand span{color:var(--accent)}
+.hello{color:var(--muted)}
+.spacer{flex:1}
+.hdr-ctl{display:flex;align-items:center;gap:8px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:7px 12px;font-weight:500}
+.btn:hover{border-color:#cfc8bb}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.small{padding:4px 9px;font-size:12px;border-radius:8px}
+.btn.danger{color:var(--danger)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:11px;font-weight:700}
+.badge.zero{background:#c9c3b8}
+
+/* layout */
+main{display:grid;grid-template-columns:280px minmax(0,1fr) 320px;gap:18px;padding:18px 22px;align-items:start}
+@media (max-width:1150px){main{grid-template-columns:260px minmax(0,1fr)} .todos{grid-column:1 / -1}}
+@media (max-width:760px){main{grid-template-columns:1fr;padding:12px} header{flex-wrap:wrap}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.card h2{font-family:Fraunces,serif;font-size:18px;font-weight:600}
+.sub{color:var(--muted);font-size:12px}
+.row{display:flex;align-items:center;gap:8px}
+
+/* habits */
+.habits{position:sticky;top:76px}
+.habit-list{list-style:none;margin:12px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.habit{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;transition:background .15s}
+.habit.done{background:var(--accent-soft);border-color:#b5e0d9}
+.habit input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.habit label{flex:1;cursor:pointer;word-break:break-word}
+.habit.done label{text-decoration:line-through;color:#3d6b65}
+.habit .x{opacity:0;border:none;background:none;color:var(--muted);font-size:16px;padding:0 4px}
+.habit:hover .x,.habit .x:focus{opacity:1}
+.progress{height:8px;border-radius:99px;background:#eee8dd;overflow:hidden;margin:10px 0 4px}
+.progress > div{height:100%;background:var(--accent);transition:width .3s}
+.add-row{display:flex;gap:6px;margin-top:6px}
+.add-row input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:#fff}
+.reset-note{margin-top:10px}
+
+/* calendar */
+.cal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.cal-head h2{font-size:24px;min-width:200px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:6px 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.grid{border-top:1px solid var(--line);border-left:1px solid var(--line);border-radius:10px;overflow:hidden}
+.cell{min-height:108px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px;background:#fff;position:relative;text-align:left;border-top:none;border-left:none;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.cell:hover{background:#fbfaf7}
+.cell.other{background:#faf8f4;color:#a8a39a}
+.cell.today{background:var(--today)}
+.cell .num{font-weight:700;font-size:13px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
+.cell.today .num{background:var(--accent);color:#fff}
+.chip{font-size:11.5px;padding:2px 6px;border-radius:6px;background:#e8f1fb;color:#1e3a5f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.todo{background:#f4efe6;color:#5b4a2f}
+.chip.todo.done{text-decoration:line-through;opacity:.6}
+.more{font-size:11px;color:var(--muted)}
+.monkey{position:absolute;top:4px;right:4px;width:38px;height:38px;animation:spin 1.6s linear infinite;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15))}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:760px){.cell{min-height:70px}.chip{display:none}.monkey{width:26px;height:26px}}
+
+/* todos */
+.todo-tools{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.todo-tools select{border:1px solid var(--line);border-radius:8px;padding:4px 6px;background:#fff;font-size:12px}
+.todo-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.todo{border:1px solid var(--line);border-left:5px solid var(--pcolor,#ccc);border-radius:10px;padding:9px 10px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start}
+.todo input[type=checkbox]{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+.todo .t{font-weight:500;word-break:break-word}
+.todo.done .t{text-decoration:line-through;color:var(--muted)}
+.todo.done{opacity:.65}
+.todo .labels{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:4px}
+.todo .due{font-size:11.5px;color:var(--muted)}
+.todo .due.overdue{color:var(--danger);font-weight:700}
+.lbl{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;white-space:nowrap}
+/* priority: red/amber/green */
+.p-high{background:#fde2e2;color:#9b1c1c} .p-med{background:#fdf0cf;color:#8a5a00} .p-low{background:#dcf5e3;color:#17643a}
+/* importance: purples */
+.i-high{background:#5b21b6;color:#fff} .i-med{background:#e4dafc;color:#4c1d95} .i-low{background:#f1effa;color:#6d6589}
+/* effort: blues */
+.e-big{background:#1e40af;color:#fff} .e-medium{background:#cfe0fd;color:#1e3a8a} .e-quick{background:#e8f6fb;color:#155e75}
+.legend{display:flex;flex-direction:column;gap:5px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--muted)}
+.legend .row{flex-wrap:wrap;gap:4px}
+.todo-form{display:none;flex-direction:column;gap:8px;margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fbfaf7}
+.todo-form.open{display:flex}
+.todo-form .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.field{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:#fff;color:var(--ink);font-size:13px}
+.field textarea{min-height:70px;resize:vertical}
+
+/* modals */
+.overlay{position:fixed;inset:0;background:rgba(20,22,26,.42);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:var(--panel);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:min(560px,100%);max-height:90vh;overflow:auto;padding:20px}
+.modal-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.modal-head h3{font-family:Fraunces,serif;font-size:20px;flex:1}
+.ev{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.ev .when{font-weight:700;color:var(--accent);font-size:12.5px}
+.ev .title{font-weight:600;font-size:15px}
+.ev .meta{color:var(--muted);font-size:12.5px;margin-top:2px}
+.ev .notes{white-space:pre-wrap;margin-top:6px;font-size:13px;background:#faf8f4;border-radius:8px;padding:6px 8px}
+.ev .acts{display:flex;gap:6px;margin-top:8px}
+.ev-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.ev-form .full{grid-column:1 / -1}
+.empty{color:var(--muted);font-style:italic;padding:6px 0}
+table.sum{width:100%;border-collapse:collapse;margin-top:8px}
+table.sum th,table.sum td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.sum th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+table.sum td.n{font-variant-numeric:tabular-nums;text-align:right}
+table.sum th.n{text-align:right}
+.big-stat{display:flex;gap:10px;margin-bottom:6px}
+.big-stat div{flex:1;background:#faf8f4;border-radius:12px;padding:10px 12px}
+.big-stat b{display:block;font-size:24px;font-family:Fraunces,serif}
+
+/* reminders */
+#toasts{position:fixed;right:18px;bottom:18px;z-index:60;display:flex;flex-direction:column;gap:10px;max-width:min(360px,calc(100vw - 36px))}
+.toast{background:#1d232b;color:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:pop .25s ease-out}
+.toast h4{margin:0 0 6px;font-size:14px;display:flex;align-items:center;gap:8px}
+.toast ul{margin:0;padding-left:18px;font-size:13px}
+.toast li{margin:2px 0}
+.toast .od{color:#fca5a5;font-weight:700}
+.toast .acts{display:flex;gap:6px;margin-top:10px}
+.toast .btn{background:#2f3742;border-color:#3c4552;color:#fff}
+@keyframes pop{from{transform:translateY(8px);opacity:0}}
+.banner{margin:12px 22px 0;padding:10px 14px;border-radius:10px;background:#fff4d6;border:1px solid #f1d58a;color:#6b4e00}
+
+/* gate */
+.gate{min-height:100vh;display:grid;place-items:center;padding:24px}
+.gate .card{max-width:420px;text-align:center;padding:30px}
+.gate .monkey-static{width:84px;height:84px;margin:0 auto 10px;display:block;animation:spin 3s linear infinite}
+.gate .auth-card{width:min(400px,100%);text-align:left}
+.auth-card h2,.auth-card .monkey-static{text-align:center}
+.auth-card #gate-title{text-align:center}
+.tabs{display:flex;gap:4px;background:#f1ede5;border-radius:10px;padding:4px;margin:14px 0}
+.tab{flex:1;border:none;background:transparent;border-radius:8px;padding:7px;font-weight:600;color:var(--muted)}
+.tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+#auth-form{display:flex;flex-direction:column;gap:10px}
+#auth-form .btn{padding:10px}
+.keep{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.au-err{color:var(--danger);font-size:13px;min-height:1em}
+.demo-note{font-size:12px;color:#6b4e00;background:#fff4d6;border:1px solid #f1d58a;border-radius:10px;padding:8px 10px;margin:14px 0 0}
+@media (prefers-reduced-motion:reduce){.monkey,.gate .monkey-static{animation-duration:6s}}
+</style>
+</head>
+<body>
+
+<!-- Sign-in screen (mock, browser-only accounts) -->
+<div id="gate" class="gate">
+  <div class="card auth-card">
+    <svg class="monkey-static" viewBox="0 0 64 64" aria-hidden="true"><use href="#monkey-art"/></svg>
+    <h2 id="gate-title" style="font-family:Fraunces,serif;font-size:24px;margin-bottom:6px">Daybook</h2>
+    <p id="gate-msg" class="sub hidden" style="font-size:14px"></p>
+    <div id="auth-box">
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" id="tab-in" role="tab" aria-selected="true">Sign in</button>
+        <button type="button" class="tab" id="tab-up" role="tab" aria-selected="false">Create account</button>
+      </div>
+      <form id="auth-form" novalidate>
+        <div class="field"><label for="au-name">Username</label><input id="au-name" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="30" required></div>
+        <div class="field up-only hidden"><label for="au-display">Display name (optional)</label><input id="au-display" maxlength="40"></div>
+        <div class="field"><label for="au-pass">Passcode</label><input id="au-pass" type="password" autocomplete="current-password" required></div>
+        <div class="field up-only hidden"><label for="au-pass2">Confirm passcode</label><input id="au-pass2" type="password" autocomplete="new-password"></div>
+        <label class="keep"><input type="checkbox" id="au-keep"> Keep me signed in on this device</label>
+        <div id="au-err" class="au-err" role="alert"></div>
+        <button class="btn primary" type="submit" id="au-submit">Sign in</button>
+      </form>
+      <p class="demo-note"><b>Demo login.</b> Accounts and data live only in this browser on this device. Passcodes are hashed, but this is not real security: anyone using this browser could read the saved data. Use <b>Export</b> to back up.</p>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">Day<span>book</span></div>
+    <div class="hello" id="hello"></div>
+    <div class="spacer"></div>
+    <div class="hdr-ctl">
+      <label for="remind-every" class="sub">Remind me every</label>
+      <select id="remind-every" class="btn small">
+        <option value="0">Off</option><option value="15">15 min</option><option value="30">30 min</option>
+        <option value="60">1 hour</option><option value="120">2 hours</option>
+      </select>
+      <button class="btn" id="remind-now" title="Show to-do reminder now">🔔 <span id="open-badge" class="badge zero">0</span></button>
+      <button class="btn small" id="export-btn" title="Download a backup of your data">Export</button>
+      <label class="btn small" for="import-file" title="Restore from a backup file" tabindex="0">Import</label>
+      <input type="file" id="import-file" accept="application/json,.json" hidden>
+      <button class="btn small" id="signout">Sign out</button>
+    </div>
+  </header>
+  <div id="banner" class="banner hidden"></div>
+
+  <main>
+    <!-- HABITS -->
+    <aside class="card habits" aria-label="Daily habits">
+      <div class="row"><h2 style="flex:1">Daily habits</h2><button class="btn small" id="open-summary">Summary</button></div>
+      <div class="sub" id="habit-date"></div>
+      <div class="progress" aria-hidden="true"><div id="habit-bar" style="width:0"></div></div>
+      <div class="sub" id="habit-count"></div>
+      <ul class="habit-list" id="habit-list"></ul>
+      <form class="add-row" id="habit-form">
+        <input id="habit-name" placeholder="Add a habit (e.g. Drink water)" maxlength="60" aria-label="New habit name">
+        <button class="btn primary" type="submit">Add</button>
+      </form>
+      <div class="sub reset-note" id="reset-note"></div>
+    </aside>
+
+    <!-- CALENDAR -->
+    <section class="card" aria-label="Calendar">
+      <div class="cal-head">
+        <h2 id="month-title"></h2>
+        <div class="row">
+          <button class="btn small" id="prev-month" aria-label="Previous month">‹</button>
+          <button class="btn small" id="go-today">Today</button>
+          <button class="btn small" id="next-month" aria-label="Next month">›</button>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn primary small" id="add-event-today">+ Event</button>
+      </div>
+      <div class="dow"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+      <div class="grid" id="grid"></div>
+    </section>
+
+    <!-- TODOS -->
+    <aside class="card todos" aria-label="To-do list">
+      <div class="row"><h2 style="flex:1">To-dos</h2><button class="btn small primary" id="toggle-todo-form">+ Add</button></div>
+      <form class="todo-form" id="todo-form">
+        <div class="field"><label for="td-text">Task</label><input id="td-text" maxlength="140" required></div>
+        <div class="grid3">
+          <div class="field"><label for="td-pri">Priority</label><select id="td-pri"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
+          <div class="field"><label for="td-imp">Importance</label><select id="td-imp"><option value="high">Critical</option><option value="med" selected>Important</option><option value="low">Minor</option></select></div>
+          <div class="field"><label for="td-eff">Work</label><select id="td-eff"><option value="quick">Quick</option><option value="medium" selected>Medium</option><option value="big">Big</option></select></div>
+        </div>
+        <div class="field"><label for="td-due">Due date (optional)</label><input type="date" id="td-due"></div>
+        <div class="row"><button class="btn primary" type="submit">Save to-do</button><button class="btn ghost" type="button" id="cancel-todo">Cancel</button></div>
+      </form>
+      <div class="todo-tools">
+        <select id="todo-sort" aria-label="Sort to-dos">
+          <option value="priority">Sort: priority</option>
+          <option value="importance">Sort: importance</option>
+          <option value="effort">Sort: least work first</option>
+          <option value="due">Sort: due date</option>
+        </select>
+        <select id="todo-show" aria-label="Show">
+          <option value="open">Show: open</option>
+          <option value="all">Show: all</option>
+          <option value="done">Show: done</option>
+        </select>
+      </div>
+      <ul class="todo-list" id="todo-list"></ul>
+      <div class="legend">
+        <div class="row"><b style="width:74px">Priority</b><span class="lbl p-high">High</span><span class="lbl p-med">Medium</span><span class="lbl p-low">Low</span></div>
+        <div class="row"><b style="width:74px">Importance</b><span class="lbl i-high">★ Critical</span><span class="lbl i-med">Important</span><span class="lbl i-low">Minor</span></div>
+        <div class="row"><b style="width:74px">Work</b><span class="lbl e-quick">▮ Quick</span><span class="lbl e-medium">▮▮ Medium</span><span class="lbl e-big">▮▮▮ Big</span></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- Day modal -->
+<div class="overlay hidden" id="day-modal" role="dialog" aria-modal="true" aria-labelledby="day-title">
+  <div class="modal">
+    <div class="modal-head"><h3 id="day-title"></h3><button class="btn ghost" data-close aria-label="Close">✕</button></div>
+    <div id="day-events"></div>
+    <div id="day-todos"></div>
+    <form class="ev-form" id="ev-form">
+      <div class="full"><b id="ev-form-title">Add event</b></div>
+      <div class="field full"><label for="ev-title">Title</label><input id="ev-title" maxlength="100" required></div>
+      <div class="field"><label for="ev-date">Date</label><input type="date" id="ev-date" required></div>
+      <div class="field"><label for="ev-start">Time</label><input type="time" id="ev-start"></div>
+      <div class="field"><label for="ev-end">End time (optional)</label><input type="time" id="ev-end"></div>
+      <div class="field"><label for="ev-loc">Location</label><input id="ev-loc" maxlength="140"></div>
+      <div class="field full"><label for="ev-notes">Notes</label><textarea id="ev-notes" maxlength="4000"></textarea></div>
+      <div class="full row"><button class="btn primary" type="submit" id="ev-save">Save event</button><button class="btn ghost hidden" type="button" id="ev-cancel-edit">Cancel edit</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Summary modal -->
+<div class="overlay hidden" id="summary-modal" role="dialog" aria-modal="true" aria-labelledby="sum-title">
+  <div class="modal">
+    <div class="modal-head"><h3 id="sum-title">Habit summary</h3><button class="btn ghost" data-close aria-label="Close">✕</button></div>
+    <div class="big-stat">
+      <div><span class="sub">Checked today</span><b id="sum-today">0</b></div>
+      <div><span class="sub">Last 7 days</span><b id="sum-week">0</b></div>
+      <div><span class="sub">All-time checks</span><b id="sum-all">0</b></div>
+    </div>
+    <div id="sum-body"></div>
+  </div>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<!-- Original monkey artwork (reused via <use>) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="monkey-art">
+      <circle cx="10" cy="30" r="8.5" fill="#7a4a24"/><circle cx="10" cy="30" r="4.8" fill="#f3c99d"/>
+      <circle cx="54" cy="30" r="8.5" fill="#7a4a24"/><circle cx="54" cy="30" r="4.8" fill="#f3c99d"/>
+      <circle cx="32" cy="32" r="22" fill="#8c5a2e"/>
+      <path d="M27 11 q5 -7 10 0" fill="none" stroke="#7a4a24" stroke-width="3" stroke-linecap="round"/>
+      <ellipse cx="25.5" cy="29" rx="8" ry="9" fill="#f3c99d"/>
+      <ellipse cx="38.5" cy="29" rx="8" ry="9" fill="#f3c99d"/>
+      <ellipse cx="32" cy="41" rx="14" ry="10" fill="#f3c99d"/>
+      <circle cx="26" cy="29" r="3.2" fill="#1d1d1d"/><circle cx="38" cy="29" r="3.2" fill="#1d1d1d"/>
+      <circle cx="27" cy="28" r="1" fill="#fff"/><circle cx="39" cy="28" r="1" fill="#fff"/>
+      <circle cx="29.5" cy="37" r="1.2" fill="#5a3518"/><circle cx="34.5" cy="37" r="1.2" fill="#5a3518"/>
+      <path d="M24 42 q8 7 16 0" fill="none" stroke="#5a3518" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="20" cy="38" r="2.6" fill="#f29b8f" opacity=".6"/><circle cx="44" cy="38" r="2.6" fill="#f29b8f" opacity=".6"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+(() => {
+"use strict";
+const TZ = "America/New_York";
+const MONKEY = '<svg class="monkey" viewBox="0 0 64 64" role="img" aria-label="Today"><use href="#monkey-art"/></svg>';
+const RANK = { high: 0, med: 1, low: 2 };
+const EFFORT_RANK = { quick: 0, medium: 1, big: 2 };
+const PCOLOR = { high: "#dc2626", med: "#d97706", low: "#16a34a" };
+const PLABEL = { high: "High", med: "Medium", low: "Low" };
+const ILABEL = { high: "★ Critical", med: "Important", low: "Minor" };
+const ELABEL = { quick: "▮ Quick", medium: "▮▮ Medium", big: "▮▮▮ Big" };
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const newId = p => p + "-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+
+/* ---------- Time helpers (everything keyed to Eastern Time) ---------- */
+function nyParts(d = new Date()) {
+  const f = new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+  const o = {}; f.formatToParts(d).forEach(p => (o[p.type] = p.value)); return o;
+}
+function todayKey() { const o = nyParts(); return `${o.year}-${o.month}-${o.day}`; }
+const keyOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+function parseKey(k) { const [y, m, d] = k.split("-").map(Number); return { y, m: m - 1, d }; }
+function addDays(k, n) { const { y, m, d } = parseKey(k); const t = new Date(Date.UTC(y, m, d + n)); return keyOf(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()); }
+function prettyDate(k, opts = { weekday: "long", month: "long", day: "numeric", year: "numeric" }) {
+  const { y, m, d } = parseKey(k); return new Date(Date.UTC(y, m, d)).toLocaleDateString("en-US", { ...opts, timeZone: "UTC" });
+}
+function prettyTime(t) { if (!t) return ""; const [h, mi] = t.split(":").map(Number); const ap = h >= 12 ? "PM" : "AM"; return `${((h + 11) % 12) + 1}:${String(mi).padStart(2, "0")} ${ap}`; }
+function nowMinutesNY() { const o = nyParts(); return +o.hour * 60 + +o.minute; }
+
+/* ---------- State ---------- */
+/* ==========================================================================
+   MOCK AUTH + LOCAL STORAGE
+   Everything that knows *where* data lives is in this block. To move to a
+   real service later (Firebase, Supabase, …), replace MockAuth and LocalStore
+   with versions that call that service; the rest of the app is unchanged.
+   ========================================================================== */
+const NS = "daybook:v1:";
+const LS = (() => { try { const k = NS + "probe"; localStorage.setItem(k, "1"); localStorage.removeItem(k); return localStorage; } catch (e) { return null; } })();
+const SS = (() => { try { const k = NS + "probe"; sessionStorage.setItem(k, "1"); sessionStorage.removeItem(k); return sessionStorage; } catch (e) { return null; } })();
+const readJSON = (k, fb) => { try { const v = LS && LS.getItem(k); return v ? JSON.parse(v) : fb; } catch (e) { return fb; } };
+const writeJSON = (k, v) => { if (!LS) return false; try { LS.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+const MockAuth = {
+  users() { return readJSON(NS + "users", {}); },
+  normalize(name) { return String(name || "").trim().toLowerCase(); },
+  async derive(pass, salt) {
+    // PBKDF2 so passcodes aren't stored as plain text. Still NOT real security:
+    // the data itself is unencrypted in this browser.
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, key, 256);
+    return b64(bits);
+  },
+  async signUp(rawName, pass, display) {
+    const name = this.normalize(rawName);
+    if (!/^[a-z0-9._-]{3,30}$/.test(name)) throw new Error("Username must be 3–30 characters: letters, numbers, . _ or -");
+    if (String(pass).length < 6) throw new Error("Passcode must be at least 6 characters.");
+    const users = this.users();
+    if (users[name]) throw new Error("That username is taken on this device. Try signing in instead.");
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    users[name] = { salt: b64(salt), hash: await this.derive(pass, salt), display: String(display || "").trim().slice(0, 40), created: Date.now() };
+    if (!writeJSON(NS + "users", users)) throw new Error("Couldn't save the account — browser storage is full or blocked.");
+    return name;
+  },
+  async signIn(rawName, pass) {
+    const name = this.normalize(rawName), u = this.users()[name];
+    // Same message either way so the form doesn't reveal which usernames exist.
+    const fail = new Error("Username or passcode is incorrect.");
+    if (!u) throw fail;
+    if ((await this.derive(pass, unb64(u.salt))) !== u.hash) throw fail;
+    return name;
+  },
+  current() {
+    try { return (SS && SS.getItem(NS + "session")) || (LS && LS.getItem(NS + "session")) || null; } catch (e) { return null; }
+  },
+  setSession(name, keep) {
+    try { if (SS) SS.setItem(NS + "session", name); if (keep && LS) LS.setItem(NS + "session", name); else if (LS) LS.removeItem(NS + "session"); } catch (e) {}
+  },
+  signOut() { try { if (SS) SS.removeItem(NS + "session"); if (LS) LS.removeItem(NS + "session"); } catch (e) {} },
+  displayName(name) { const u = this.users()[name]; return (u && u.display) || name; }
+};
+
+const LocalStore = {
+  key(user) { return NS + "data:" + user; },
+  load(user) { return readJSON(this.key(user), null); },
+  save(user, state) { return writeJSON(this.key(user), { events: state.events, habits: state.habits, todos: state.todos, logs: state.logs, settings: state.settings, savedAt: Date.now() }); }
+};
+/* ======================== end of swappable block ======================== */
+
+const emptyState = () => ({ events: [], habits: [], todos: [], logs: {}, settings: { remindEvery: 30 } });
+const S = emptyState();
+let currentUser = null, today = todayKey();
+const now = parseKey(today);
+let viewY = now.y, viewM = now.m, openDay = null, editingEvent = null;
+
+function banner(msg) { const b = $("#banner"); if (!msg) { b.classList.add("hidden"); return; } b.textContent = msg; b.classList.remove("hidden"); }
+function fatal(title, msg) { $("#gate-title").textContent = title; $("#gate-msg").textContent = msg; $("#gate-msg").classList.remove("hidden"); $("#auth-box").classList.add("hidden"); }
+
+/* ---------- Sign-in screen ---------- */
+let authMode = "in";
+function setAuthMode(mode) {
+  authMode = mode;
+  $("#tab-in").classList.toggle("active", mode === "in"); $("#tab-up").classList.toggle("active", mode === "up");
+  $("#tab-in").setAttribute("aria-selected", mode === "in"); $("#tab-up").setAttribute("aria-selected", mode === "up");
+  document.querySelectorAll(".up-only").forEach(n => n.classList.toggle("hidden", mode !== "up"));
+  $("#au-pass").autocomplete = mode === "up" ? "new-password" : "current-password";
+  $("#au-submit").textContent = mode === "up" ? "Create account" : "Sign in";
+  $("#au-err").textContent = "";
+}
+$("#tab-in").onclick = () => setAuthMode("in");
+$("#tab-up").onclick = () => setAuthMode("up");
+$("#auth-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("#au-name").value, pass = $("#au-pass").value, btn = $("#au-submit");
+  $("#au-err").textContent = "";
+  if (!name.trim() || !pass) { $("#au-err").textContent = "Enter a username and passcode."; return; }
+  if (authMode === "up" && pass !== $("#au-pass2").value) { $("#au-err").textContent = "Passcodes don't match."; return; }
+  btn.disabled = true;
+  try {
+    const user = authMode === "up" ? await MockAuth.signUp(name, pass, $("#au-display").value) : await MockAuth.signIn(name, pass);
+    MockAuth.setSession(user, $("#au-keep").checked);
+    $("#auth-form").reset(); setAuthMode("in");
+    startSession(user);
+  } catch (err) { $("#au-err").textContent = err.message || "Something went wrong."; }
+  finally { btn.disabled = false; }
+});
+
+function showSignIn() {
+  $("#app").classList.add("hidden"); $("#gate").classList.remove("hidden");
+  setTimeout(() => $("#au-name").focus(), 30);
+}
+function startSession(user) {
+  currentUser = user;
+  Object.assign(S, emptyState(), LocalStore.load(user) || {});
+  $("#hello").textContent = "Hi, " + MockAuth.displayName(user);
+  banner("");
+  $("#gate").classList.add("hidden"); $("#app").classList.remove("hidden");
+  renderAll(); syncReminderTimer();
+}
+function signOut() {
+  saveNow();
+  MockAuth.signOut(); currentUser = null;
+  clearInterval(remindTimer); remindTimer = null; lastRemindEvery = null; firstReminderDone = false;
+  document.querySelectorAll(".overlay").forEach(o => o.classList.add("hidden")); openDay = null;
+  $("#toasts").innerHTML = "";
+  Object.assign(S, emptyState());
+  showSignIn();
+}
+
+function init() {
+  if (!LS) { fatal("Storage unavailable", "This browser is blocking local storage (private browsing can do this), so Daybook can't save accounts or data. Try a normal browser window."); return; }
+  if (!window.crypto || !crypto.subtle) { fatal("Unsupported browser", "Daybook needs a modern browser and a secure page (https:// or a file opened locally) to protect passcodes."); return; }
+  const user = MockAuth.current();
+  if (user && MockAuth.users()[user]) startSession(user); else { MockAuth.signOut(); showSignIn(); }
+}
+let firstReminderDone = false;
+
+/* ---------- Saving: whole state, debounced ---------- */
+let saveTimer = null;
+function saveNow() {
+  clearTimeout(saveTimer); saveTimer = null;
+  if (!currentUser) return;
+  if (!LocalStore.save(currentUser, S)) banner("Couldn't save — browser storage is full or blocked. Use Export to download a backup now.");
+}
+function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 250); }
+// The UI updates S first, then calls put/del; both just persist the whole state.
+const put = () => scheduleSave();
+const del = () => scheduleSave();
+window.addEventListener("pagehide", saveNow);
+// Keep two open tabs of the same account in sync.
+window.addEventListener("storage", e => {
+  if (!currentUser) return;
+  if (e.key === NS + "session" && !MockAuth.current()) { signOut(); return; }
+  if (e.key === LocalStore.key(currentUser) && e.newValue) { try { Object.assign(S, emptyState(), JSON.parse(e.newValue)); renderAll(); } catch (err) {} }
+});
+
+/* ---------- Backup: export / import ---------- */
+$("#signout").onclick = signOut;
+$("#export-btn").onclick = () => {
+  saveNow();
+  const blob = new Blob([JSON.stringify({ app: "daybook", version: 1, user: currentUser, exportedAt: new Date().toISOString(), data: LocalStore.load(currentUser) || {} }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `daybook-${currentUser}-${today}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+$("label[for=import-file]").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("#import-file").click(); } });
+$("#import-file").addEventListener("change", async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  let parsed;
+  try { parsed = JSON.parse(await file.text()); } catch (err) { toast(`<h4>Import failed</h4><div style="font-size:13px">That file isn't valid JSON.</div>`, 6000); return; }
+  const d = parsed && parsed.app === "daybook" ? parsed.data : null;
+  const ok = d && ["events", "habits", "todos"].every(k => Array.isArray(d[k] || [])) && typeof (d.logs || {}) === "object";
+  if (!ok) { toast(`<h4>Import failed</h4><div style="font-size:13px">That doesn't look like a Daybook backup.</div>`, 6000); return; }
+  const el = toast(`<h4>Replace your data?</h4><div style="font-size:13px">This replaces everything in <b>${esc(MockAuth.displayName(currentUser))}</b>'s Daybook with the backup "${esc(file.name)}" (${(d.events || []).length} events, ${(d.habits || []).length} habits, ${(d.todos || []).length} to-dos). This can't be undone.</div>`, 0);
+  const yes = document.createElement("button"); yes.className = "btn small"; yes.textContent = "Replace"; yes.style.background = "#b91c1c";
+  yes.onclick = () => { Object.assign(S, emptyState(), { events: d.events || [], habits: d.habits || [], todos: d.todos || [], logs: d.logs || {}, settings: { ...emptyState().settings, ...(d.settings || {}) } }); saveNow(); renderAll(); el.remove(); toast(`<h4>Backup restored</h4>`, 4000); };
+  el.querySelector(".acts").prepend(yes);
+});
+
+function strip(o) { const c = { ...o }; delete c.id; return c; }
+
+/* ---------- Rendering ---------- */
+function renderAll() { if (!currentUser) return; renderHabits(); renderCalendar(); renderTodos(); renderBadge(); if (openDay) renderDay(); if (!$("#summary-modal").classList.contains("hidden")) renderSummary(); $("#remind-every").value = String(S.settings.remindEvery ?? 30); }
+
+function sortedHabits() { return [...S.habits].sort((a, b) => (a.created || 0) - (b.created || 0)); }
+
+function renderHabits() {
+  const done = S.logs[today] || {};
+  const hs = sortedHabits();
+  const count = hs.filter(h => done[h.id]).length;
+  $("#habit-date").textContent = prettyDate(today) + " (ET)";
+  $("#habit-bar").style.width = hs.length ? (100 * count / hs.length) + "%" : "0";
+  $("#habit-count").textContent = hs.length ? `${count} of ${hs.length} checked today` : "No habits yet — add one below.";
+  $("#habit-list").innerHTML = hs.map(h => `
+    <li class="habit ${done[h.id] ? "done" : ""}">
+      <input type="checkbox" id="h-${esc(h.id)}" data-habit="${esc(h.id)}" ${done[h.id] ? "checked" : ""}>
+      <label for="h-${esc(h.id)}">${esc(h.name)}</label>
+      <button class="x" data-del-habit="${esc(h.id)}" title="Delete habit" aria-label="Delete ${esc(h.name)}">✕</button>
+    </li>`).join("");
+  renderResetNote();
+}
+function renderResetNote() {
+  const o = nyParts(); const left = 86400 - (+o.hour * 3600 + +o.minute * 60 + +o.second);
+  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
+  $("#reset-note").textContent = `Checkboxes reset at midnight Eastern — in ${h}h ${m}m.`;
+}
+
+function renderCalendar() {
+  $("#month-title").textContent = new Date(Date.UTC(viewY, viewM, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const startDow = new Date(Date.UTC(viewY, viewM, 1)).getUTCDay();
+  const start = keyOf(viewY, viewM, 1);
+  const byDate = {};
+  for (const e of S.events) (byDate[e.date] ||= { ev: [], td: [] }).ev.push(e);
+  for (const t of S.todos) if (t.due) (byDate[t.due] ||= { ev: [], td: [] }).td.push(t);
+  let html = "";
+  for (let i = 0; i < 42; i++) {
+    const k = addDays(start, i - startDow); const { m, d } = parseKey(k);
+    const items = byDate[k] || { ev: [], td: [] };
+    const evs = [...items.ev].sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+    const chips = [
+      ...evs.map(e => `<div class="chip" title="${esc(e.title)}">${e.start ? esc(prettyTime(e.start)) + " · " : ""}${esc(e.title)}</div>`),
+      ...items.td.map(t => `<div class="chip todo ${t.done ? "done" : ""}" title="To-do: ${esc(t.text)}">☐ ${esc(t.text)}</div>`)
+    ];
+    const shownChips = chips.slice(0, 3).join("") + (chips.length > 3 ? `<div class="more">+${chips.length - 3} more</div>` : "");
+    const isToday = k === today;
+    html += `<button class="cell ${m !== viewM ? "other" : ""} ${isToday ? "today" : ""}" data-day="${k}" aria-label="${esc(prettyDate(k))}${chips.length ? ", " + chips.length + " items" : ""}">
+      <span class="num">${d}</span>${isToday ? MONKEY : ""}${shownChips}</button>`;
+  }
+  $("#grid").innerHTML = html;
+}
+
+function todoSort(a, b) {
+  const mode = $("#todo-sort").value;
+  if (a.done !== b.done) return a.done ? 1 : -1;
+  const pr = (RANK[a.priority] ?? 1) - (RANK[b.priority] ?? 1);
+  const im = (RANK[a.importance] ?? 1) - (RANK[b.importance] ?? 1);
+  const ef = (EFFORT_RANK[a.effort] ?? 1) - (EFFORT_RANK[b.effort] ?? 1);
+  const du = (a.due || "9999").localeCompare(b.due || "9999");
+  const order = { priority: [pr, im, du, ef], importance: [im, pr, du, ef], effort: [ef, pr, im, du], due: [du, pr, im, ef] }[mode];
+  for (const v of order) if (v) return v;
+  return (a.created || 0) - (b.created || 0);
+}
+function dueText(t) {
+  if (!t.due) return "";
+  if (!t.done && t.due < today) return `<span class="due overdue">Overdue · ${esc(prettyDate(t.due, { month: "short", day: "numeric" }))}</span>`;
+  if (t.due === today) return `<span class="due" style="color:var(--accent);font-weight:700">Due today</span>`;
+  return `<span class="due">Due ${esc(prettyDate(t.due, { weekday: "short", month: "short", day: "numeric" }))}</span>`;
+}
+function renderTodos() {
+  const show = $("#todo-show").value;
+  const list = S.todos.filter(t => show === "all" || (show === "done" ? t.done : !t.done)).sort(todoSort);
+  $("#todo-list").innerHTML = list.length ? list.map(t => `
+    <li class="todo ${t.done ? "done" : ""}" style="--pcolor:${PCOLOR[t.priority] || "#ccc"}">
+      <input type="checkbox" data-todo="${esc(t.id)}" ${t.done ? "checked" : ""} aria-label="Mark ${esc(t.text)} done">
+      <div><div class="t">${esc(t.text)}</div>${dueText(t)}</div>
+      <button class="btn ghost small danger" data-del-todo="${esc(t.id)}" aria-label="Delete ${esc(t.text)}">✕</button>
+      <div class="labels">
+        <span class="lbl p-${esc(t.priority)}">${PLABEL[t.priority] || ""} priority</span>
+        <span class="lbl i-${esc(t.importance)}">${ILABEL[t.importance] || ""}</span>
+        <span class="lbl e-${esc(t.effort)}">${ELABEL[t.effort] || ""}</span>
+      </div>
+    </li>`).join("") : `<li class="empty">${show === "done" ? "Nothing completed yet." : "All clear! Add a to-do above."}</li>`;
+}
+function openTodos() { return S.todos.filter(t => !t.done); }
+function renderBadge() {
+  const n = openTodos().length, b = $("#open-badge");
+  b.textContent = n; b.classList.toggle("zero", n === 0);
+  document.title = (n ? `(${n}) ` : "") + "Daybook — Calendar, Habits & To-dos";
+}
+
+/* ---------- Day modal (events) ---------- */
+function openDayModal(k) { openDay = k; editingEvent = null; resetEventForm(k); renderDay(); show("#day-modal"); setTimeout(() => $("#ev-title").focus(), 30); }
+function renderDay() {
+  $("#day-title").textContent = prettyDate(openDay);
+  const evs = S.events.filter(e => e.date === openDay).sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+  $("#day-events").innerHTML = evs.length ? evs.map(e => `
+    <div class="ev">
+      <div class="when">${e.start ? esc(prettyTime(e.start)) + (e.end ? " – " + esc(prettyTime(e.end)) : "") : "All day"}</div>
+      <div class="title">${esc(e.title)}</div>
+      ${e.location ? `<div class="meta">📍 ${esc(e.location)}</div>` : ""}
+      ${e.notes ? `<div class="notes">${esc(e.notes)}</div>` : ""}
+      <div class="acts"><button class="btn small" data-edit-ev="${esc(e.id)}">Edit</button><button class="btn small danger" data-del-ev="${esc(e.id)}">Delete</button></div>
+    </div>`).join("") : `<div class="empty">No events on this day yet.</div>`;
+  const tds = S.todos.filter(t => t.due === openDay);
+  $("#day-todos").innerHTML = tds.length ? `<div class="sub" style="margin:6px 0 4px">To-dos due</div>` + tds.map(t => `<div class="chip todo ${t.done ? "done" : ""}" style="margin-bottom:4px">☐ ${esc(t.text)}</div>`).join("") : "";
+}
+function resetEventForm(k) {
+  $("#ev-form").reset(); $("#ev-date").value = k; editingEvent = null;
+  $("#ev-form-title").textContent = "Add event"; $("#ev-save").textContent = "Save event"; $("#ev-cancel-edit").classList.add("hidden");
+}
+function startEdit(id) {
+  const e = S.events.find(x => x.id === id); if (!e) return;
+  editingEvent = id;
+  $("#ev-title").value = e.title || ""; $("#ev-date").value = e.date; $("#ev-start").value = e.start || ""; $("#ev-end").value = e.end || "";
+  $("#ev-loc").value = e.location || ""; $("#ev-notes").value = e.notes || "";
+  $("#ev-form-title").textContent = "Edit event"; $("#ev-save").textContent = "Update event"; $("#ev-cancel-edit").classList.remove("hidden");
+  $("#ev-title").focus();
+}
+
+/* ---------- Summary modal ---------- */
+function renderSummary() {
+  const hs = sortedHabits(), ids = new Set(hs.map(h => h.id));
+  const tot = {}, week = {};
+  const weekKeys = new Set(Array.from({ length: 7 }, (_, i) => addDays(today, -i)));
+  for (const [date, done] of Object.entries(S.logs)) for (const hid of Object.keys(done)) {
+    if (!done[hid] || !ids.has(hid)) continue;
+    tot[hid] = (tot[hid] || 0) + 1; if (weekKeys.has(date)) week[hid] = (week[hid] || 0) + 1;
+  }
+  const streak = hid => { let k = (S.logs[today] || {})[hid] ? today : addDays(today, -1), n = 0; while ((S.logs[k] || {})[hid]) { n++; k = addDays(k, -1); } return n; };
+  const todayDone = S.logs[today] || {};
+  $("#sum-today").textContent = `${hs.filter(h => todayDone[h.id]).length} / ${hs.length}`;
+  $("#sum-week").textContent = Object.values(week).reduce((a, b) => a + b, 0);
+  $("#sum-all").textContent = Object.values(tot).reduce((a, b) => a + b, 0);
+  $("#sum-body").innerHTML = hs.length ? `<table class="sum"><thead><tr><th>Habit</th><th>Today</th><th class="n">Last 7 days</th><th class="n">Streak</th><th class="n">Total</th></tr></thead><tbody>` +
+    hs.map(h => `<tr><td>${esc(h.name)}</td><td>${todayDone[h.id] ? "✅" : "—"}</td><td class="n">${week[h.id] || 0}/7</td><td class="n">${streak(h.id)} 🔥</td><td class="n"><b>${tot[h.id] || 0}</b></td></tr>`).join("") +
+    `</tbody></table>` : `<div class="empty">Add a habit to start tracking.</div>`;
+}
+
+/* ---------- Reminders ---------- */
+let remindTimer = null, lastRemindEvery = null;
+function syncReminderTimer() {
+  const every = Number(S.settings.remindEvery ?? 30);
+  if (!firstReminderDone) { firstReminderDone = true; setTimeout(() => showReminder(false), 1500); }
+  if (every === lastRemindEvery) return;
+  lastRemindEvery = every; clearInterval(remindTimer); remindTimer = null;
+  if (every > 0) remindTimer = setInterval(() => showReminder(false), every * 60000);
+}
+function showReminder(manual) {
+  const open = openTodos().sort((a, b) => todoSort(a, b));
+  const nowMin = nowMinutesNY();
+  const upcoming = S.events.filter(e => e.date === today && e.start && (+e.start.slice(0, 2) * 60 + +e.start.slice(3)) >= nowMin)
+    .sort((a, b) => a.start.localeCompare(b.start)).slice(0, 3);
+  if (!open.length && !upcoming.length) { if (manual) toast(`<h4>🎉 Nothing pending</h4><div class="sub" style="color:#cbd5e1">No open to-dos and no more events today.</div>`, 5000); return; }
+  const overdue = open.filter(t => t.due && t.due < today).length;
+  const top = open.slice(0, 5).map(t => `<li>${t.due && t.due < today ? '<span class="od">Overdue:</span> ' : t.due === today ? "<b>Today:</b> " : ""}${esc(t.text)} <span style="opacity:.7">(${PLABEL[t.priority] || ""})</span></li>`).join("");
+  const ev = upcoming.map(e => `<li>${esc(prettyTime(e.start))} — ${esc(e.title)}${e.location ? " @ " + esc(e.location) : ""}</li>`).join("");
+  document.querySelectorAll(".toast[data-kind=remind]").forEach(n => n.remove());
+  toast(`<h4>🔔 ${open.length} open to-do${open.length === 1 ? "" : "s"}${overdue ? ` · <span class="od">${overdue} overdue</span>` : ""}</h4>
+    ${top ? `<ul>${top}</ul>` : ""}${open.length > 5 ? `<div style="opacity:.7;font-size:12px;margin-top:4px">+${open.length - 5} more</div>` : ""}
+    ${ev ? `<div style="margin-top:8px;font-weight:700;font-size:13px">Coming up today</div><ul>${ev}</ul>` : ""}`, 0, "remind");
+}
+function toast(html, ms, kind = "") {
+  const el = document.createElement("div"); el.className = "toast"; if (kind) el.dataset.kind = kind;
+  el.innerHTML = html + `<div class="acts"><button class="btn small" data-dismiss>Dismiss</button></div>`;
+  el.querySelector("[data-dismiss]").onclick = () => el.remove();
+  $("#toasts").appendChild(el);
+  if (ms) setTimeout(() => el.remove(), ms);
+  return el;
+}
+
+/* ---------- Modal helpers ---------- */
+let lastFocus = null;
+function show(sel) { lastFocus = document.activeElement; $(sel).classList.remove("hidden"); }
+function hide(el) { el.classList.add("hidden"); if (el.id === "day-modal") openDay = null; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll(".overlay:not(.hidden)").forEach(hide); });
+document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e => { if (e.target === o || e.target.closest("[data-close]")) hide(o); }));
+
+/* Two-click delete confirmation (no browser dialogs in this frame) */
+function confirmClick(btn, action) {
+  if (btn.dataset.armed) { action(); return; }
+  btn.dataset.armed = "1"; const old = btn.textContent; btn.textContent = "Confirm?";
+  setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = old; } }, 3000);
+}
+
+/* ---------- Events ---------- */
+$("#habit-form").addEventListener("submit", e => {
+  e.preventDefault(); const name = $("#habit-name").value.trim(); if (!name) return;
+  const h = { kind: "habit", name, created: Date.now() }; const id = newId("hb");
+  S.habits.push({ ...h, id }); put(id, h); $("#habit-name").value = ""; renderHabits();
+});
+$("#habit-list").addEventListener("change", e => {
+  const hid = e.target.dataset.habit; if (!hid) return;
+  const k = today; const done = { ...(S.logs[k] || {}) };
+  if (e.target.checked) done[hid] = true; else delete done[hid];
+  S.logs[k] = done; put("log-" + k, { kind: "log", date: k, done }); renderHabits();
+  if (!$("#summary-modal").classList.contains("hidden")) renderSummary();
+});
+$("#habit-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-del-habit]"); if (!b) return;
+  confirmClick(b, () => { const id = b.dataset.delHabit; S.habits = S.habits.filter(h => h.id !== id); del(id); renderHabits(); });
+});
+$("#open-summary").onclick = () => { renderSummary(); show("#summary-modal"); };
+
+$("#prev-month").onclick = () => { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderCalendar(); };
+$("#next-month").onclick = () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderCalendar(); };
+$("#go-today").onclick = () => { const p = parseKey(today); viewY = p.y; viewM = p.m; renderCalendar(); };
+$("#add-event-today").onclick = () => openDayModal(today);
+$("#grid").addEventListener("click", e => { const c = e.target.closest("[data-day]"); if (c) openDayModal(c.dataset.day); });
+
+$("#ev-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const ev = { kind: "event", title: $("#ev-title").value.trim(), date: $("#ev-date").value, start: $("#ev-start").value, end: $("#ev-end").value, location: $("#ev-loc").value.trim(), notes: $("#ev-notes").value.trim() };
+  if (!ev.title || !ev.date) return;
+  if (ev.end && ev.start && ev.end < ev.start) { $("#ev-end").setCustomValidity("End time is before start time"); $("#ev-end").reportValidity(); return; }
+  $("#ev-end").setCustomValidity("");
+  const id = editingEvent || newId("ev");
+  const prev = S.events.find(x => x.id === id);
+  ev.created = prev ? prev.created : Date.now();
+  S.events = S.events.filter(x => x.id !== id).concat({ ...ev, id });
+  put(id, ev);
+  if (ev.date !== openDay) openDay = ev.date;
+  resetEventForm(openDay); renderDay(); renderCalendar();
+});
+$("#ev-end").addEventListener("input", () => $("#ev-end").setCustomValidity(""));
+$("#ev-cancel-edit").onclick = () => resetEventForm(openDay);
+$("#day-events").addEventListener("click", e => {
+  const ed = e.target.closest("[data-edit-ev]"); if (ed) return startEdit(ed.dataset.editEv);
+  const d = e.target.closest("[data-del-ev]");
+  if (d) confirmClick(d, () => { const id = d.dataset.delEv; S.events = S.events.filter(x => x.id !== id); del(id); if (editingEvent === id) resetEventForm(openDay); renderDay(); renderCalendar(); });
+});
+
+$("#toggle-todo-form").onclick = () => { $("#todo-form").classList.toggle("open"); if ($("#todo-form").classList.contains("open")) $("#td-text").focus(); };
+$("#cancel-todo").onclick = () => { $("#todo-form").reset(); $("#todo-form").classList.remove("open"); };
+$("#todo-form").addEventListener("submit", e => {
+  e.preventDefault(); const text = $("#td-text").value.trim(); if (!text) return;
+  const t = { kind: "todo", text, priority: $("#td-pri").value, importance: $("#td-imp").value, effort: $("#td-eff").value, due: $("#td-due").value || "", done: false, created: Date.now() };
+  const id = newId("td"); S.todos.push({ ...t, id }); put(id, t);
+  $("#todo-form").reset(); $("#todo-form").classList.remove("open"); renderTodos(); renderBadge(); renderCalendar();
+});
+$("#todo-list").addEventListener("change", e => {
+  const id = e.target.dataset.todo; if (!id) return;
+  const t = S.todos.find(x => x.id === id); if (!t) return;
+  t.done = e.target.checked; t.doneAt = t.done ? Date.now() : null;
+  put(id, strip(t)); renderTodos(); renderBadge(); renderCalendar();
+});
+$("#todo-list").addEventListener("click", e => {
+  const b = e.target.closest("[data-del-todo]"); if (!b) return;
+  confirmClick(b, () => { const id = b.dataset.delTodo; S.todos = S.todos.filter(x => x.id !== id); del(id); renderTodos(); renderBadge(); renderCalendar(); });
+});
+$("#todo-sort").onchange = renderTodos;
+$("#todo-show").onchange = renderTodos;
+
+$("#remind-every").onchange = e => {
+  const v = Number(e.target.value); S.settings.remindEvery = v;
+  put("settings", { kind: "settings", remindEvery: v }); syncReminderTimer();
+};
+$("#remind-now").onclick = () => showReminder(true);
+
+/* ---------- Midnight ET rollover ---------- */
+setInterval(() => {
+  const k = todayKey();
+  if (k !== today) {
+    const wasViewingToday = (() => { const p = parseKey(today); return p.y === viewY && p.m === viewM; })();
+    today = k;
+    if (wasViewingToday) { const p = parseKey(today); viewY = p.y; viewM = p.m; }
+    renderAll();
+    toast(`<h4>🌅 New day</h4><div style="font-size:13px">Your habit checkboxes have reset for ${esc(prettyDate(today, { weekday: "long", month: "short", day: "numeric" }))}.</div>`, 15000);
+  } else renderResetNote();
+}, 20000);
+
+init();
+})();
+</script>
+</body>
+</html>
